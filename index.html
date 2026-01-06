@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dannie Agricultural Products Nigeria Limited</title>
+
+<style>
+/* ====== CSS ====== */
+body { font-family: Arial, sans-serif; margin: 0; background: #fff; color: #000; }
+h1, h2, h3 { color: #e67e22; } /* Orange */
+header, footer { background: #000; color: #fff; padding: 10px 20px; }
+nav a { color: #fff; margin-right: 15px; text-decoration: none; font-weight: bold; }
+nav a:hover { text-decoration: underline; }
+section { padding: 20px; }
+input, button, select, textarea { margin: 5px 0; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; width: 100%; max-width: 300px; }
+button { background-color: #e67e22; color: #fff; cursor: pointer; transition: background 0.3s; width:auto; }
+button:hover { background-color: #d35400; }
+.product, .matrix-cell { border: 1px solid #000; padding: 10px; margin: 5px; display: inline-block; vertical-align: top; border-radius: 8px; text-align: center; background: #f0f0f0; transition: transform 0.2s, box-shadow 0.2s; }
+.product:hover, .matrix-cell:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+#matrix { display: grid; grid-template-columns: repeat(4, 120px); gap: 10px; margin-top: 20px; }
+#products { display: flex; flex-wrap: wrap; }
+.product img { border-radius: 8px; max-width: 100px; }
+#admin_panel, #profile_section, #user_list_section, #analytics_section { display:none; margin-top:20px; }
+.user-entry { border:1px solid #000; margin:5px; padding:5px; }
+@media (max-width: 600px) { #matrix { grid-template-columns: repeat(2, 1fr); } #products { flex-direction: column; } }
+footer p { margin: 5px 0; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Dannie Agricultural Products Nigeria Limited</h1>
+  <nav>
+    <a href="#about_us">About Us</a>
+    <a href="#products_section">Products</a>
+    <a href="#matrix_section">Growth Matrix</a>
+    <a href="#profile_section">Profile</a>
+    <a href="#contact_us">Contact</a>
+  </nav>
+</header>
+
+<section id="about_us">
+  <h2>About Us</h2>
+  <h3>Our Vision</h3>
+  <p>To become Nigeria’s most trusted and innovative provider of hygienically processed, nutritious, and affordable staple food products.</p>
+  <h3>Our Mission</h3>
+  <p>Deliver premium-quality, hygienically packed food products, ensuring transparency, safety, and customer satisfaction.</p>
+  <h3>Core Values</h3>
+  <ul>
+    <li>Integrity</li>
+    <li>Quality</li>
+    <li>Innovation</li>
+    <li>Customer Satisfaction</li>
+    <li>Transparency</li>
+  </ul>
+</section>
+
+<section id="products_section">
+  <h2>Products</h2>
+  <div id="products"></div>
+</section>
+
+<section id="matrix_section">
+  <h2>4×4 Growth Matrix</h2>
+  <div id="matrix"></div>
+</section>
+
+<section id="user_actions">
+  <h2>Register</h2>
+  <input type="text" id="reg_name" placeholder="Name">
+  <input type="email" id="reg_email" placeholder="Email">
+  <input type="password" id="reg_password" placeholder="Password">
+  <button onclick="registerUser(document.getElementById('reg_name').value, document.getElementById('reg_email').value, document.getElementById('reg_password').value)">Register</button>
+
+  <h2>Login</h2>
+  <input type="email" id="login_email" placeholder="Email">
+  <input type="password" id="login_password" placeholder="Password">
+  <button onclick="loginUser(document.getElementById('login_email').value, document.getElementById('login_password').value)">Login</button>
+  <button onclick="logoutUser()">Logout</button>
+</section>
+
+<section id="profile_section"></section>
+
+<section id="admin_panel">
+  <h2>Admin Panel - Product Management</h2>
+  <input type="text" id="admin_product_name" placeholder="Product Name">
+  <input type="number" id="admin_product_price" placeholder="Price">
+  <input type="number" id="admin_product_weight" placeholder="Weight (kg)">
+  <input type="file" id="admin_product_file">
+  <button onclick="addProductWithUpload()">Add Product</button>
+  <div id="admin_products_list"></div>
+</section>
+
+<section id="user_list_section"></section>
+<section id="analytics_section"></section>
+
+<footer>
+  <p>&copy; 2026 Dannie Agricultural Products Nigeria Limited</p>
+</footer>
+
+<!-- ====== JS ====== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
+
+// 🔹 Firebase config - replace with your own
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+// 🔹 Admin emails
+const adminEmails = ["admin@dannieagric.com"];
+
+// ========= FUNCTIONS =========
+async function registerUser(name,email,password){
+  try{
+    const userCredential = await createUserWithEmailAndPassword(auth,email,password);
+    const user = userCredential.user;
+    await setDoc(doc(db,"users",user.uid),{
+      name:name,email:email,investment_amount:0,joined_date:new Date()
+    });
+    alert("User registered successfully!"); showProfile(user); loadMatrix();
+  }catch(err){alert(err.message);}
+}
+
+async function loginUser(email,password){try{await signInWithEmailAndPassword(auth,email,password);}catch(err){alert(err.message);}}
+function logoutUser(){signOut(auth).then(()=>{document.getElementById("profile_section").style.display="none";document.getElementById("admin_panel").style.display="none";document.getElementById("user_list_section").style.display="none";document.getElementById("analytics_section").style.display="none";});}
+
+// ===== PRODUCTS =====
+async function showProducts(){const productsContainer=document.getElementById("products");productsContainer.innerHTML="";const snapshot=await getDocs(collection(db,"products"));snapshot.forEach(docSnap=>{const data=docSnap.data();const div=document.createElement("div");div.className="product";div.innerHTML=`<h3>${data.product_name}</h3><p>Price: ₦${data.price}</p><p>Weight: ${data.weight}kg</p><img src="${data.image_url}" width="100">`;productsContainer.appendChild(div);});}
+
+// ===== MATRIX =====
+async function loadMatrix(){const matrixContainer=document.getElementById("matrix");matrixContainer.innerHTML="";const positions=["A1","A2","A3","A4","B1","B2","B3","B4","C1","C2","C3","C4","D1","D2","D3","D4"];const snapshot=await getDocs(collection(db,"growth_matrix"));const takenPositions={};snapshot.forEach(docSnap=>takenPositions[docSnap.data().matrix_position]=docSnap.data().user_id);for(let pos of positions){const cellDiv=document.createElement("div");cellDiv.className="matrix-cell";cellDiv.innerHTML=`<strong>${pos}</strong><br>`;if(takenPositions[pos])cellDiv.innerHTML+=`<p>Taken by ${takenPositions[pos]}</p>`;else cellDiv.innerHTML+=`<button onclick="joinPosition('${pos}')">Join</button>`;matrixContainer.appendChild(cellDiv);}}
+async function joinPosition(pos){const user=auth.currentUser;if(!user){alert("Login first!");return;}const snapshot=await getDocs(collection(db,"growth_matrix"));let alreadyJoined=false;snapshot.forEach(docSnap=>{if(docSnap.data().user_id===user.email)alreadyJoined=true;});if(alreadyJoined){alert("You already joined a position!");return;}await addDoc(collection(db,"growth_matrix"),{matrix_position:pos,user_id:user.email,status:"active",points:10});alert(`You joined position ${pos} and earned 10 points!`);loadMatrix();showProfile(user);}
+function checkAdmin(user){return user && adminEmails.includes(user.email);}
+
+// ===== ADMIN PRODUCTS =====
+async function addProductWithUpload(){const user=auth.currentUser;if(!checkAdmin(user)){alert("Access denied!");return;}const file=document.getElementById("admin_product_file").files[0];const name=document.getElementById("admin_product_name").value;const price=Number(document.getElementById("admin_product_price").value);const weight=Number(document.getElementById("admin_product_weight").value);if(!file||!name||!price||!weight){alert("Fill all fields and select image!");return;}const storageRef=ref(storage,'products/'+file.name);await uploadBytes(storageRef,file);const imageURL=await getDownloadURL(storageRef);await addDoc(collection(db,"products"),{product_name:name,price:price,weight:weight,image_url:imageURL});alert("Product added with image!");loadProductsForAdmin();showProducts();}
+async function loadProductsForAdmin(){const user=auth.currentUser;if(!checkAdmin(user))return;const list=document.getElementById("admin_products_list");list.innerHTML="";const snapshot=await getDocs(collection(db,"products"));snapshot.forEach(docSnap=>{const data=docSnap.data();const div=document.createElement("div");div.className="user-entry";div.innerHTML=`<strong>${data.product_name}</strong> - ₦${data.price} - ${data.weight}kg<br>
+<button onclick="editProduct('${docSnap.id}')">Edit</button><button onclick="deleteProduct('${docSnap.id}')">Delete</button>`;list.appendChild(div);});
+async function editProduct(id){const user=auth.currentUser;if(!checkAdmin(user)){alert("Access denied!");return;}const docRef=doc(db,"products",id);const docSnap=await getDoc(docRef);if(!docSnap.exists()){alert("Product not found!");return;}const data=docSnap.data();const newName=prompt("New name:",data.product_name)||data.product_name;const newPrice=Number(prompt("New price:",data.price))||data.price;const newWeight=Number(prompt("New weight:",data.weight))||data.weight;await updateDoc(docRef,{product_name:newName,price:newPrice,weight:newWeight});alert("Product updated!");loadProductsForAdmin();showProducts();}
+async function deleteProduct(id){const user=auth.currentUser;if(!checkAdmin(user)){alert("Access denied!");return;}if(!confirm("Are you sure?"))return;await deleteDoc(doc(db,"products",id));alert("Product deleted!");loadProductsForAdmin();showProducts();}
+
+// ===== PROFILE =====
+async function showProfile(user){if(!user)return;const profile=document.getElementById("profile_section");profile.style.display="block";const docSnap=await getDoc(doc(db,"users",user.uid));const data=docSnap.data();const matrixSnap=await getDocs(query(collection(db,"growth_matrix"),where("user_id","==",user.email)));let position=matrixSnap.size>0?matrixSnap.docs[0].data().matrix_position:"Not joined";let points=matrixSnap.size>0?matrixSnap.docs[0].data().points:0;profile.innerHTML=`<h2>Your Profile</h2><p><strong>Name:</strong> <input type="text" id="profile_name" value="${data.name}"></p><p><strong>Email:</strong> <input type="email" id="profile_email" value="${data.email}"></p><p><strong>Investment Amount:</strong> <input type="number" id="profile_investment" value="${data.investment_amount}"></p><p><strong>Joined Date:</strong> ${data.joined_date.toDate().toDateString()}</p><p><strong>Matrix Position:</strong> ${position} | Points: ${points}</p><button onclick="updateProfile()">Update Profile</button>`;}
+async function updateProfile(){const user=auth.currentUser;if(!user)return;const name=document.getElementById("profile_name").value;const email=document.getElementById("profile_email").value;const investment=Number(document.getElementById("profile_investment").value);await updateDoc(doc(db,"users",user.uid),{name:name,email:email,investment_amount:investment});alert("Profile updated!");showProfile(user);}
+
+// ===== ADMIN USER =====
+async function loadUsersForAdmin(){const user=auth.currentUser;if(!checkAdmin(user))return;const list=document.getElementById("user_list_section");list.style.display="block";list.innerHTML="";const snapshot=await getDocs(collection(db,"users"));snapshot.forEach(docSnap=>{const data=docSnap.data();const div=document.createElement("div");div.className="user-entry";div.innerHTML=`<strong>${data.name}</strong> - ${data.email} - ₦${data.investment_amount}<br><button onclick="adminEditUser('${docSnap.id}')">Edit</button><button onclick="adminDeleteUser('${docSnap.id}')">Remove</button>`;list.appendChild(div);});
+async function adminEditUser(id){const user=auth.currentUser;if(!checkAdmin(user))return;const docRef=doc(db,"users",id);const docSnap=await getDoc(docRef);if(!docSnap.exists())return;const data=docSnap.data();const newName=prompt("New Name:",data.name)||data.name;const newEmail=prompt("New Email:",data.email)||data.email;const newInvestment=Number(prompt("New Investment:",data.investment_amount))||data.investment_amount;await updateDoc(docRef,{name:newName,email:newEmail,investment_amount:newInvestment});alert("User updated!");loadUsersForAdmin();}
+async function adminDeleteUser(id){const user=auth.currentUser;if(!checkAdmin(user))return;if(!confirm("Remove this user?"))return;await deleteDoc(doc(db,"users",id));alert("User removed!");loadUsersForAdmin();}
+
+// ===== ANALYTICS =====
+async function loadAnalytics(){const user=auth.currentUser;if(!checkAdmin(user))return;const section=document.getElementById("analytics_section");section.style.display="block";section.innerHTML="<h2>Analytics</h2>";const usersSnap=await getDocs(collection(db,"users"));const productsSnap=await getDocs(collection(db,"products"));const matrixSnap=await getDocs(collection(db,"growth_matrix"));section.innerHTML+=`<p>Total Users: ${usersSnap.size}</p><p>Total Products: ${productsSnap.size}</p><p>Matrix Positions Filled: ${matrixSnap.size}/16</p>`;}
+
+// ===== AUTH STATE =====
+onAuthStateChanged(auth,user=>{if(user){showProfile(user);if(checkAdmin(user)){document.getElementById("admin_panel").style.display="block";loadProductsForAdmin();loadUsersForAdmin();loadAnalytics();}else{document.getElementById("admin_panel").style.display="none";document.getElementById("user_list_section").style.display="none";document.getElementById("analytics_section").style.display="none";}}else{document.getElementById("profile_section").style.display="none";document.getElementById("admin_panel").style.display="none";document.getElementById("user_list_section").style.display="none";document.getElementById("analytics_section").style.display="none";}});
+
+// ===== GLOBAL =====
+window.registerUser=registerUser;window.loginUser=loginUser;window.logoutUser=logoutUser;
+window.joinPosition=joinPosition;window.addProductWithUpload=addProductWithUpload;
+window.editProduct=editProduct;window.deleteProduct=deleteProduct;
+window.updateProfile=updateProfile;
+window.loadUsersForAdmin=loadUsersForAdmin;window.adminEditUser=adminEditUser;window.adminDeleteUser=adminDeleteUser;
+
+window.addEventListener("DOMContentLoaded",()=>{showProducts();loadMatrix();});
+</script>
+
+</body>
+</html>
